@@ -7,7 +7,7 @@ Currently, if you want to change its behavior (categories, colors,
 etc.) you need to edit the code.
 
 Then add a <a
-href="http://projects.tynsoe.org/en/geektool/>GeekTool</a> pointing to
+href="http://projects.tynsoe.org/en/geektool/">GeekTool</a> pointing to
 that image to your desktop.
 
 Prerequisistes: AppKit, PIL.
