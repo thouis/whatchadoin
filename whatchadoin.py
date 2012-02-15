@@ -21,7 +21,7 @@ def get_idle_time():
     return val / 1000000000.0
 
 
-def update_image(path, width=500, height=75, data=[('blah', 1, 'black')]):
+def update_image(path, current_active, width=500, height=75, data=[('blah', 1, 'black')]):
     im = PIL.Image.new('RGB', (width, height))
     draw = PIL.ImageDraw.Draw(im)
     total_time = float(sum(d[1] for d in data))
@@ -29,12 +29,14 @@ def update_image(path, width=500, height=75, data=[('blah', 1, 'black')]):
     keybase = 10
     for d in data:
         w = int((width * d[1]) / total_time)
+        if d is data[-1]:
+            w = width - base
         draw.rectangle([(base, 0), (base + w, height)], fill=d[2])
         base += w
     for d in data:
         # draw the key
         draw.rectangle([(keybase, height - 20), (keybase + 10, height - 10)], fill=d[2], outline='black')
-        draw.text((keybase + 15, height - 20), d[0], fill='black')
+        draw.text((keybase + 15, height - 20), d[0], fill='white' if d[0] == current_active else 'black')
         keybase += 20 + draw.textsize(d[0])[0]
     im.save(path, 'PNG')
 
@@ -69,6 +71,7 @@ def update_counts(current_app, window_name, idle_time, old_counts, delta_t, time
     for k in old_counts:
         old_counts[k] *= math.exp(- timeconst * delta_t)
     old_counts[dest] = old_counts.get(dest, 0.0) + delta_t
+    return dest
 
 
 winfilter = Quartz.CoreGraphics.kCGWindowListOptionOnScreenOnly | Quartz.CoreGraphics.kCGWindowListExcludeDesktopElements
@@ -86,5 +89,5 @@ while True:
         win_names = [w['kCGWindowName'] for w in windows if w.get('kCGWindowName', None)]
         win_name = win_names[0] if win_names else ''
         curtime = time.time()
-        update_counts(app.localizedName(), win_name, get_idle_time(), timecounts, curtime - last, timeconst)
-        update_image(sys.argv[1], data=[(k, timecounts[k], default_colors[k]) for k in default_colors if k in timecounts])
+        active = update_counts(app.localizedName(), win_name, get_idle_time(), timecounts, curtime - last, timeconst)
+        update_image(sys.argv[1], active, data=[(k, timecounts[k], default_colors[k]) for k in default_colors if k in timecounts])
