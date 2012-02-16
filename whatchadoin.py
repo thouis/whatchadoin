@@ -8,6 +8,7 @@ import time
 import sys
 import PIL.Image
 import PIL.ImageDraw
+import PIL.ImageChops
 import math
 from collections import OrderedDict
 
@@ -22,7 +23,13 @@ def get_idle_time():
 
 
 def update_image(path, current_active, width=500, height=75, data=[('blah', 1, 'black')]):
-    im = PIL.Image.new('RGB', (width, height))
+    try:
+        im = PIL.Image.open(path)
+        assert im.size == (width, height)
+        # shift up one row
+        im = PIL.ImageChops.offset(im, 0, -1)
+    except:
+        im = PIL.Image.new('RGB', (width, height))
     draw = PIL.ImageDraw.Draw(im)
     total_time = float(sum(d[1] for d in data))
     base = 0
@@ -31,7 +38,7 @@ def update_image(path, current_active, width=500, height=75, data=[('blah', 1, '
         w = int((width * d[1]) / total_time)
         if d is data[-1]:
             w = width - base
-        draw.rectangle([(base, 0), (base + w, height)], fill=d[2])
+        draw.rectangle([(base, (2 * height) / 3), (base + w, height)], fill=d[2])
         base += w
     for d in data:
         # draw the key
@@ -53,6 +60,9 @@ def update_counts(current_app, window_name, idle_time, old_counts, delta_t, time
     dest = 'misc'
     idle_threshold = 10
     if current_app == 'Emacs':
+        dest = 'coding'
+        idle_threshold = 30  # Allow more thinking when editing
+    elif 'CellProfiler' in window_name:
         dest = 'coding'
         idle_threshold = 30  # Allow more thinking when editing
     elif current_app == 'Terminal':
@@ -81,13 +91,12 @@ timeconst = math.log(0.5) / 3600  # half-life of one hour
 while True:
     last = time.time()
     time.sleep(1)
-    current_pid = NSWorkspace.sharedWorkspace().activeApplication()['NSApplicationProcessIdentifier']
-    current_apps = [x for x in NSWorkspace.sharedWorkspace().runningApplications() if x.processIdentifier() == current_pid]
-    if len(current_apps) > 0:
-        app = current_apps[0]
-        windows = [x for x in Quartz.CoreGraphics.CGWindowListCopyWindowInfo(winfilter, 0) if x['kCGWindowOwnerPID'] == current_pid]
-        win_names = [w['kCGWindowName'] for w in windows if w.get('kCGWindowName', None)]
-        win_name = win_names[0] if win_names else ''
-        curtime = time.time()
-        active = update_counts(app.localizedName(), win_name, get_idle_time(), timecounts, curtime - last, timeconst)
-        update_image(sys.argv[1], active, data=[(k, timecounts[k], default_colors[k]) for k in default_colors if k in timecounts])
+    active_app = NSWorkspace.sharedWorkspace().activeApplication()
+    current_pid = active_app['NSApplicationProcessIdentifier']
+    app = active_app['NSWorkspaceApplicationKey']
+    windows = [x for x in Quartz.CoreGraphics.CGWindowListCopyWindowInfo(winfilter, 0) if x['kCGWindowOwnerPID'] == current_pid]
+    win_names = [w['kCGWindowName'] for w in windows if w.get('kCGWindowName', None)]
+    win_name = win_names[0] if win_names else ''
+    curtime = time.time()
+    active = update_counts(app.localizedName(), win_name, get_idle_time(), timecounts, min(curtime - last, 3.0), timeconst)
+    update_image(sys.argv[1], active, data=[(k, timecounts[k], default_colors[k]) for k in default_colors if k in timecounts])
