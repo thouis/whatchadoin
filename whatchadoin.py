@@ -79,7 +79,7 @@ def update_counts(current_app, window_name, idle_time, old_counts, delta_t, time
     if idle_time > idle_threshold:
         return old_counts
     for k in old_counts:
-        old_counts[k] *= math.exp(- timeconst * delta_t)
+        old_counts[k] *= math.exp(timeconst * delta_t)
     old_counts[dest] = old_counts.get(dest, 0.0) + delta_t
     return dest
 
